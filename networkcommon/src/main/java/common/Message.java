@@ -16,6 +16,7 @@ public class Message {
     public AuthErrorMessage authErrorMessage;
     public PublicMessage publicMessage;
     public ClientListMessage clientListMessage;
+    public NickChangeMessage nickChangeMessage;
 
     public  String toJson() {
         return new Gson().toJson(this);
@@ -65,6 +66,12 @@ public class Message {
     public static Message createAuthError(String errorMsg) {
         Message m = create(Command.AUTH_ERROR);
         m.authErrorMessage = new AuthErrorMessage(errorMsg);
+        return m;
+    }
+
+    public static Message createNickChangeMsg(String login, String oldNick, String newNick){
+        Message m = create(Command.CHANGE_NICK);
+        m.nickChangeMessage = new NickChangeMessage(login, oldNick, newNick);
         return m;
     }
 

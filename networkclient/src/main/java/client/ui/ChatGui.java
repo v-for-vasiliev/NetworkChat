@@ -19,17 +19,22 @@ public class ChatGui implements ChatHandler {
     private DefaultListModel<String> listModel;
     private JList<String> userList;
     private DefaultListModel<String> userListModel;
+    private final JDialog dialog;
+    private JLabel dialogLabel;
+    private JTextField enterNewNick;
 
     private MessageService messageService;
     private String selfNick;
+    private String selfLogin;
 
-    public ChatGui(MessageService messageService, String selfNick) {
+    public ChatGui(MessageService messageService, String selfNick, String selfLogin) {
 
 
         if (messageService != null) {
             this.messageService = messageService;
             messageService.setChatHandler(this);
             this.selfNick = selfNick;
+            this.selfLogin = selfLogin;
         }
 
         // prepare frame
@@ -42,9 +47,43 @@ public class ChatGui implements ChatHandler {
         // prepare menu panel
         JPanel northPanel = new JPanel();
         northPanel.setLayout(new GridLayout());
-        northPanel.add(new JButton("menu1"));
-        northPanel.add(new JButton("menu2"));
-        northPanel.add(new JButton("menu3"));
+        JButton changeNick = new JButton("Change nick");
+        changeNick.addActionListener(new ActionListener() {
+            @Override
+            public void actionPerformed(ActionEvent e) {
+                showDialog();
+            }
+        });
+        northPanel.add(changeNick);
+        northPanel.add(new JButton("Private message"));
+
+        // prepare nick change window
+        dialog = new JDialog(frame, "Change nick", true);
+        Container dialogPane = dialog.getContentPane();
+        dialogPane.setLayout(new BoxLayout(dialogPane, BoxLayout.Y_AXIS));
+        dialog.setDefaultCloseOperation(JFrame.HIDE_ON_CLOSE);
+
+        JPanel dialogPanel = new JPanel();
+        dialogLabel = new JLabel("Enter new nick");
+        enterNewNick = new JTextField(20);
+        JButton confirmButton = new JButton("Confirm");
+        confirmButton.addActionListener(new ActionListener() {
+            @Override
+            public void actionPerformed(ActionEvent e) {
+                messageService.changeNick(selfLogin, getSelfNick(), enterNewNick.getText());
+                setSelfNick(enterNewNick.getText());
+                enterNewNick.setText("");
+                dialog.setVisible(false);
+
+            }
+        });
+
+        dialogPanel.add(dialogLabel);
+        dialogPanel.add(enterNewNick);
+        dialogPanel.add(confirmButton);
+        dialogPane.add(dialogPanel);
+        dialog.pack();
+
 
         //prepare text input elements
         JPanel southPanel = new JPanel();
@@ -64,7 +103,7 @@ public class ChatGui implements ChatHandler {
                 if (!textField.getText().isEmpty()) {
                     listModel.addElement("You: " + textField.getText());
                     scrollToBottom();
-                    messageService.sendPublicMessage(selfNick, textField.getText());
+                    messageService.sendPublicMessage(getSelfNick(), textField.getText());
                     textField.setText("");
                 }
             }
@@ -77,7 +116,7 @@ public class ChatGui implements ChatHandler {
                     listModel.addElement("You: " + textField.getText());
                     scrollToBottom();
                     if (messageService != null) {
-                        messageService.sendPublicMessage(selfNick, textField.getText());
+                        messageService.sendPublicMessage(getSelfNick(), textField.getText());
                     }
 
                     textField.setText("");
@@ -120,7 +159,6 @@ public class ChatGui implements ChatHandler {
         }
     }
 
-
     public void closeGui() {
         // send exit message to server
         System.exit(2);
@@ -143,8 +181,20 @@ public class ChatGui implements ChatHandler {
         }
     }
 
+    public void showDialog(){
+        dialog.setVisible(true);
+    }
+
+    public String getSelfNick() {
+        return selfNick;
+    }
+
+    public void setSelfNick(String selfNick) {
+        this.selfNick = selfNick;
+    }
+
     public static void main(String[] args) {
-        ChatGui chatGui = new ChatGui(null, null);
+        ChatGui chatGui = new ChatGui(null, null, null);
         chatGui.showForm();
     }
 }

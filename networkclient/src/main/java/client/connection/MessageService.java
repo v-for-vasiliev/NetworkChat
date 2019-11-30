@@ -17,6 +17,8 @@ public interface MessageService {
 
     void auth(String login, String pass);
 
+    void changeNick(String login, String oldNick, String newNick);
+
     void handleMessage(Message message);
 
     void setAuthHandler(AuthHandler authHandler);

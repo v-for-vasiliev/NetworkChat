@@ -11,8 +11,9 @@ import java.awt.event.WindowEvent;
 public class AuthGui implements AuthHandler {
 
     private final JFrame frame;
-    final JDialog dialog;
-    JLabel dialogLabel;
+    private final JDialog dialog;
+    private JLabel dialogLabel;
+    private String login;
 
     private MessageService messageService;
 
@@ -39,6 +40,7 @@ public class AuthGui implements AuthHandler {
             @Override
             public void actionPerformed(ActionEvent e) {
                 messageService.auth(loginField.getText(), passwordField.getText());
+                login = loginField.getText();
             }
         });
 
@@ -89,7 +91,7 @@ public class AuthGui implements AuthHandler {
     public void onAuthOk(String nick) {
         //TODO закрыть окно правильным образом
         frame.setVisible(false);
-        ChatGui chatGui = new ChatGui(messageService, nick);
+        ChatGui chatGui = new ChatGui(messageService, nick, login);
         chatGui.showForm();
     }
 

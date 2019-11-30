@@ -13,12 +13,13 @@ import java.io.DataInputStream;
 import java.io.DataOutputStream;
 import java.io.IOException;
 import java.net.Socket;
+import java.sql.SQLException;
 
 public class ClientHandler {
 
     private ChatServer chatServer;
 
-    private String clientName;
+    private String nick;
 
     private Socket socket;
     private DataInputStream in;
@@ -37,6 +38,10 @@ public class ClientHandler {
                     readMessages();
                 } catch (IOException e) {
                     e.printStackTrace();
+                } catch (ClassNotFoundException e){
+                    e.printStackTrace();
+                } catch (SQLException e){
+                    e.printStackTrace();
                 } finally {
                     closeConnection();
                 }
@@ -49,10 +54,10 @@ public class ClientHandler {
 
     }
 
-    private void readMessages() throws IOException {
+    private void readMessages() throws IOException, SQLException, ClassNotFoundException {
         while (true) {
             String clientMessage = in.readUTF();
-            System.out.printf("Message '%s' from client %s%n", clientMessage, clientName);
+            System.out.printf("Message '%s' from client %s%n", clientMessage, nick);
             Message m = Message.fromJson(clientMessage);
             switch (m.command) {
                 case PUBLIC_MESSAGE:
@@ -63,6 +68,9 @@ public class ClientHandler {
                     PrivateMessage privateMessage = m.privateMessage;
                     chatServer.sendPrivateMessage(privateMessage.to, privateMessage.message);
                     break;
+                case CHANGE_NICK:
+                    chatServer.changeNick(m.nickChangeMessage.login, m.nickChangeMessage.oldNick, m.nickChangeMessage.newNick);
+                    break;
                 case END:
                     return;
             }
@@ -71,7 +79,7 @@ public class ClientHandler {
 
     private void closeConnection() {
         chatServer.unsubscribe(this);
-        chatServer.broadcastMessage(Message.createPublic("Server", clientName + " is offline"));
+        chatServer.broadcastMessage(Message.createPublic("Server", nick + " is offline"));
         try {
             socket.close();
         } catch (IOException e) {
@@ -92,7 +100,7 @@ public class ClientHandler {
                 }
                 synchronized (this) {
                     try {
-                        if (clientName == null) {
+                        if (nick == null) {
                             sendMessage(Message.createAuthError("Connection failed: Authentication time exceeded"));
                             Thread.sleep(100);
                             socket.close();
@@ -110,8 +118,15 @@ public class ClientHandler {
                 AuthMessage authMessage = message.authMessage;
                 String login = authMessage.login;
                 String password = authMessage.password;
-                String nick = chatServer.getAuthService().getNickByLoginPass(login, password);
-                if (nick == null) {
+                String nick = null;
+                try {
+                    nick = chatServer.getAuthService().getNickByLoginPass(login, password);
+                } catch (SQLException e) {
+                    e.printStackTrace();
+                } catch (ClassNotFoundException e) {
+                    e.printStackTrace();
+                }
+                if (nick.equals("Nick not found")) {
                     sendMessage(Message.createAuthError("Wrong login/password"));
                     continue;
                 }
@@ -122,7 +137,7 @@ public class ClientHandler {
                 }
 
                 sendMessage(Message.createAuthOk(nick));
-                clientName = nick;
+                this.nick = nick;
                 chatServer.broadcastMessage(Message.createPublic("Server", nick + " is online"));
                 chatServer.subscribe(this);
                 break;
@@ -134,13 +149,16 @@ public class ClientHandler {
         try {
             out.writeUTF(message.toJson());
         } catch (IOException e) {
-            System.err.println("Failed to send message to user " + clientName + " : " + message);
+            System.err.println("Failed to send message to user " + nick + " : " + message);
             e.printStackTrace();
         }
     }
 
-    public String getClientName() {
-        return clientName;
+    public String getNick() {
+        return nick;
     }
 
+    public void setNick(String nick) {
+        this.nick = nick;
+    }
 }

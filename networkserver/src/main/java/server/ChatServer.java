@@ -10,6 +10,7 @@ import server.client.ClientHandler;
 import java.io.IOException;
 import java.net.ServerSocket;
 import java.net.Socket;
+import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
@@ -18,7 +19,7 @@ public class ChatServer {
 
     private static final int PORT = 8189;
 
-    private final AuthService authService = new BaseAuthService();
+    public final AuthService authService = new BaseAuthService();
 
     private List<ClientHandler> clientsOnline = new ArrayList<>();
 
@@ -29,7 +30,6 @@ public class ChatServer {
 
         try {
             serverSocket = new ServerSocket(PORT);
-            authService.start();
             while (true) {
                 System.out.println("Awaiting client connection...");
                 Socket socket = serverSocket.accept();
@@ -47,8 +47,7 @@ public class ChatServer {
 
     private void shutdownServer() {
         try {
-            authService.stop();
-            serverSocket.close();
+        serverSocket.close();
         } catch (IOException e) {
             e.printStackTrace();
         }
@@ -62,11 +61,23 @@ public class ChatServer {
     private void broadcastClientsList() {
         List<String> nicknames = new ArrayList<>();
         for (ClientHandler client : clientsOnline) {
-            nicknames.add(client.getClientName());
+            nicknames.add(client.getNick());
         }
 
         Message message = Message.createClientList(nicknames);
         broadcastMessage(message);
+    }
+
+    public void changeNick(String login, String oldNick, String newNick) throws SQLException, ClassNotFoundException {
+        authService.changeNick(login, newNick);
+        broadcastMessage(Message.createPublic("Server", oldNick + " changed nick to " + newNick));
+        for (ClientHandler client : clientsOnline) {
+            if (client.getNick().equals(oldNick)) {
+                client.setNick(newNick);
+                break;
+            }
+        }
+        broadcastClientsList();
     }
 
     public synchronized void unsubscribe(ClientHandler clientHandler) {
@@ -80,7 +91,7 @@ public class ChatServer {
 
     public synchronized boolean isNickBusy(String nick) {
         for (ClientHandler client : clientsOnline) {
-            if (client.getClientName().equals(nick)) {
+            if (client.getNick().equals(nick)) {
                 return true;
             }
         }
@@ -99,7 +110,7 @@ public class ChatServer {
 
     public synchronized void sendPrivateMessage(String receivedLogin, String message) {
         for (ClientHandler client : clientsOnline) {
-            if (client.getClientName().equals(receivedLogin)) {
+            if (client.getNick().equals(receivedLogin)) {
                 //client.sendMessage(message);
                 break;
             }

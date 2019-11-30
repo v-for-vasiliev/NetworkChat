@@ -45,6 +45,12 @@ public class MessageServiceImpl implements MessageService {
     }
 
     @Override
+    public void changeNick(String login, String oldNick, String newNick) {
+        Message nickChangeMsg = Message.createNickChangeMsg(login, oldNick, newNick);
+        network.sendMessage(nickChangeMsg);
+    }
+
+    @Override
     public void handleMessage(Message message) {
         switch (message.command) {
             case AUTH_OK:
