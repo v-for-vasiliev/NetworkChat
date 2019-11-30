@@ -1,11 +1,12 @@
 package client.ui;
 
-import client.connection.IMessageService;
+import client.connection.MessageService;
 
 import javax.swing.*;
 import java.awt.*;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
+import java.util.List;
 
 public class ChatGui implements ChatHandler {
 
@@ -16,17 +17,19 @@ public class ChatGui implements ChatHandler {
     private JScrollPane scrollPane;
     private JList<String> messageList;
     private DefaultListModel<String> listModel;
+    private JList<String> userList;
+    private DefaultListModel<String> userListModel;
 
-    private IMessageService messageService;
-    private String nick;
+    private MessageService messageService;
+    private String selfNick;
 
-    public ChatGui(IMessageService messageService, String nick){
+    public ChatGui(MessageService messageService, String selfNick) {
 
 
         if (messageService != null) {
             this.messageService = messageService;
             messageService.setChatHandler(this);
-            this.nick = nick;
+            this.selfNick = selfNick;
         }
 
         // prepare frame
@@ -61,7 +64,7 @@ public class ChatGui implements ChatHandler {
                 if (!textField.getText().isEmpty()) {
                     listModel.addElement("You: " + textField.getText());
                     scrollToBottom();
-                    messageService.sendPublicMessage(nick, textField.getText());
+                    messageService.sendPublicMessage(selfNick, textField.getText());
                     textField.setText("");
                 }
             }
@@ -73,8 +76,8 @@ public class ChatGui implements ChatHandler {
                 if (!textField.getText().isEmpty()) {
                     listModel.addElement("You: " + textField.getText());
                     scrollToBottom();
-                    if(messageService != null){
-                        messageService.sendPublicMessage(nick, textField.getText());
+                    if (messageService != null) {
+                        messageService.sendPublicMessage(selfNick, textField.getText());
                     }
 
                     textField.setText("");
@@ -83,29 +86,34 @@ public class ChatGui implements ChatHandler {
         });
 
         //prepare messages list with scroll bar
-
         messageList = new JList<>();
         listModel = new DefaultListModel<>();
         messageList.setModel(listModel);
-       // listModel.addElement("");
         scrollPane = new JScrollPane(messageList);
+
+        //prepare users list
+        JPanel westPanel = new JPanel();
+        userList = new JList<>();
+        //userList.setBackground(Color.BLUE);
+        userListModel = new DefaultListModel<>();
+        userListModel.addElement(selfNick);
+        userList.setModel(userListModel);
+        westPanel.add(userList);
 
         //add elements to the main panel
         frame.add(northPanel, BorderLayout.NORTH);
         frame.add(scrollPane, BorderLayout.CENTER);
         frame.add(southPanel, BorderLayout.SOUTH);
+        frame.add(westPanel, BorderLayout.EAST);
         frame.pack();
     }
 
 
-    public void showForm(){
+    public void showForm() {
         frame.setVisible(true);
     }
 
     private void scrollToBottom() {
-//        scrollPane.getVerticalScrollBar()
-//                .setValue(scrollPane.getVerticalScrollBar().getMaximum());
-
         int lastIndex = messageList.getModel().getSize() - 1;
         if (lastIndex >= 0) {
             messageList.ensureIndexIsVisible(lastIndex);
@@ -125,8 +133,14 @@ public class ChatGui implements ChatHandler {
     }
 
     @Override
-    public void onUserListChanged() {
-
+    public void onUserListChanged(List<String> usersOnline) {
+        userListModel.clear();
+        userListModel.addElement(selfNick);
+        for (String nick : usersOnline) {
+            if (!selfNick.equals(nick)) {
+                userListModel.addElement(nick);
+            }
+        }
     }
 
     public static void main(String[] args) {

@@ -6,7 +6,7 @@ import common.Message;
 import common.message.AuthMessage;
 import common.message.PrivateMessage;
 import common.message.PublicMessage;
-import server.MyServer;
+import server.ChatServer;
 
 
 import java.io.DataInputStream;
@@ -16,7 +16,7 @@ import java.net.Socket;
 
 public class ClientHandler {
 
-    private MyServer myServer;
+    private ChatServer chatServer;
 
     private String clientName;
 
@@ -24,10 +24,10 @@ public class ClientHandler {
     private DataInputStream in;
     private DataOutputStream out;
 
-    public ClientHandler(Socket socket, MyServer myServer) {
+    public ClientHandler(Socket socket, ChatServer chatServer) {
         try {
             this.socket = socket;
-            this.myServer = myServer;
+            this.chatServer = chatServer;
             this.in = new DataInputStream(socket.getInputStream());
             this.out = new DataOutputStream(socket.getOutputStream());
 
@@ -57,11 +57,11 @@ public class ClientHandler {
             switch (m.command) {
                 case PUBLIC_MESSAGE:
                     PublicMessage publicMessage = m.publicMessage;
-                    myServer.broadcastMessage(m, this);
+                    chatServer.broadcastMessage(m, this);
                     break;
                 case PRIVATE_MESSAGE:
                     PrivateMessage privateMessage = m.privateMessage;
-                    myServer.sendPrivateMessage(privateMessage.to, privateMessage.message);
+                    chatServer.sendPrivateMessage(privateMessage.to, privateMessage.message);
                     break;
                 case END:
                     return;
@@ -70,8 +70,8 @@ public class ClientHandler {
     }
 
     private void closeConnection() {
-        myServer.unsubscribe(this);
-        myServer.broadcastMessage(Message.createPublic("Server", clientName + " is offline"));
+        chatServer.unsubscribe(this);
+        chatServer.broadcastMessage(Message.createPublic("Server", clientName + " is offline"));
         try {
             socket.close();
         } catch (IOException e) {
@@ -110,21 +110,21 @@ public class ClientHandler {
                 AuthMessage authMessage = message.authMessage;
                 String login = authMessage.login;
                 String password = authMessage.password;
-                String nick = myServer.getAuthService().getNickByLoginPass(login, password);
+                String nick = chatServer.getAuthService().getNickByLoginPass(login, password);
                 if (nick == null) {
                     sendMessage(Message.createAuthError("Wrong login/password"));
                     continue;
                 }
 
-                if (myServer.isNickBusy(nick)) {
+                if (chatServer.isNickBusy(nick)) {
                     sendMessage(Message.createAuthError("Login is already in use"));
                     continue;
                 }
 
                 sendMessage(Message.createAuthOk(nick));
                 clientName = nick;
-                myServer.broadcastMessage(Message.createPublic("Server", nick + " is online"));
-                myServer.subscribe(this);
+                chatServer.broadcastMessage(Message.createPublic("Server", nick + " is online"));
+                chatServer.subscribe(this);
                 break;
             }
         }

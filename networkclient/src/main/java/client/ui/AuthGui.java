@@ -1,6 +1,6 @@
 package client.ui;
 
-import client.connection.IMessageService;
+import client.connection.MessageService;
 
 import javax.swing.*;
 import java.awt.*;
@@ -14,12 +14,12 @@ public class AuthGui implements AuthHandler {
     final JDialog dialog;
     JLabel dialogLabel;
 
-    private IMessageService iMessageService;
+    private MessageService messageService;
 
-    public AuthGui(IMessageService iMessageService){
-        this.iMessageService = iMessageService;
-        iMessageService.setAuthHandler(this);
-        iMessageService.connectToServer();
+    public AuthGui(MessageService messageService){
+        this.messageService = messageService;
+        messageService.setAuthHandler(this);
+        messageService.connectToServer();
 
         // prepare frame
         frame = new JFrame("Authentication");
@@ -38,7 +38,7 @@ public class AuthGui implements AuthHandler {
         confirmButton.addActionListener(new ActionListener() {
             @Override
             public void actionPerformed(ActionEvent e) {
-                iMessageService.auth(loginField.getText(), passwordField.getText());
+                messageService.auth(loginField.getText(), passwordField.getText());
             }
         });
 
@@ -89,7 +89,7 @@ public class AuthGui implements AuthHandler {
     public void onAuthOk(String nick) {
         //TODO закрыть окно правильным образом
         frame.setVisible(false);
-        ChatGui chatGui = new ChatGui(iMessageService, nick);
+        ChatGui chatGui = new ChatGui(messageService, nick);
         chatGui.showForm();
     }
 

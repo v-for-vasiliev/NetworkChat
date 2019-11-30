@@ -14,17 +14,17 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 
-public class MyServer {
+public class ChatServer {
 
     private static final int PORT = 8189;
 
     private final AuthService authService = new BaseAuthService();
 
-    private List<ClientHandler> clients = new ArrayList<>();
+    private List<ClientHandler> clientsOnline = new ArrayList<>();
 
     private ServerSocket serverSocket = null;
 
-    public MyServer() {
+    public ChatServer() {
         System.out.println("Server is running");
 
         try {
@@ -55,13 +55,13 @@ public class MyServer {
     }
 
     public synchronized void subscribe(ClientHandler clientHandler) {
-        clients.add(clientHandler);
+        clientsOnline.add(clientHandler);
         broadcastClientsList();
     }
 
     private void broadcastClientsList() {
         List<String> nicknames = new ArrayList<>();
-        for (ClientHandler client : clients) {
+        for (ClientHandler client : clientsOnline) {
             nicknames.add(client.getClientName());
         }
 
@@ -70,7 +70,7 @@ public class MyServer {
     }
 
     public synchronized void unsubscribe(ClientHandler clientHandler) {
-        clients.remove(clientHandler);
+        clientsOnline.remove(clientHandler);
         broadcastClientsList();
     }
 
@@ -79,7 +79,7 @@ public class MyServer {
     }
 
     public synchronized boolean isNickBusy(String nick) {
-        for (ClientHandler client : clients) {
+        for (ClientHandler client : clientsOnline) {
             if (client.getClientName().equals(nick)) {
                 return true;
             }
@@ -89,16 +89,16 @@ public class MyServer {
     }
 
     public synchronized void broadcastMessage(Message message, ClientHandler... exceptionList) {
-        List<ClientHandler> unfiltered = Arrays.asList(exceptionList);
-        for (ClientHandler client : clients) {
-            if (!unfiltered.contains(client)) {
+        List<ClientHandler> exceptions = Arrays.asList(exceptionList);
+        for (ClientHandler client : clientsOnline) {
+            if (!exceptions.contains(client)) {
                 client.sendMessage(message);
             }
         }
     }
 
     public synchronized void sendPrivateMessage(String receivedLogin, String message) {
-        for (ClientHandler client : clients) {
+        for (ClientHandler client : clientsOnline) {
             if (client.getClientName().equals(receivedLogin)) {
                 //client.sendMessage(message);
                 break;

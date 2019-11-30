@@ -1,10 +1,9 @@
 package client;
 
-import client.connection.IMessageService;
 import client.connection.MessageService;
+import client.connection.MessageServiceImpl;
 import client.connection.Network;
 import client.ui.AuthGui;
-import client.ui.ChatGui;
 
 
 public class ClientApp {
@@ -15,7 +14,7 @@ public class ClientApp {
     public static void main(String[] args) {
         try {
             Network network = new Network(SERVER_ADDR, SERVER_PORT);
-            IMessageService messageService = new MessageService(network);
+            MessageService messageService = new MessageServiceImpl(network);
             AuthGui authGui = new AuthGui(messageService);
             authGui.showForm();
 

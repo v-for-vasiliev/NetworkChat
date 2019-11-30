@@ -13,7 +13,7 @@ public class Network implements Closeable {
     private String serverAddr;
     private int serverPort;
 
-    private IMessageService iMessageService;
+    private MessageService messageService;
     private Socket socket;
     private DataInputStream in;
     private DataOutputStream out;
@@ -38,7 +38,7 @@ public class Network implements Closeable {
                     while (true) {
                         String strFromServer = in.readUTF();
                         Message inMsg = Message.fromJson(strFromServer);
-                        iMessageService.handleMessage(inMsg);
+                        messageService.handleMessage(inMsg);
                     }
                 } catch (Exception e) {
                     e.printStackTrace();
@@ -55,8 +55,8 @@ public class Network implements Closeable {
         }
     }
 
-    public void setMessageService(IMessageService iMessageService) {
-        this.iMessageService = iMessageService;
+    public void setMessageService(MessageService messageService) {
+        this.messageService = messageService;
     }
 
     @Override
