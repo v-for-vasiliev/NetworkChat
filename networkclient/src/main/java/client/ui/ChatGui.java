@@ -6,7 +6,12 @@ import javax.swing.*;
 import java.awt.*;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
+import java.io.File;
+import java.io.FileWriter;
+import java.io.IOException;
+import java.util.ArrayList;
 import java.util.List;
+import org.apache.commons.io.input.ReversedLinesFileReader;
 
 public class ChatGui implements ChatHandler {
 
@@ -16,7 +21,7 @@ public class ChatGui implements ChatHandler {
     private JButton sendButton;
     private JScrollPane scrollPane;
     private JList<String> messageList;
-    private DefaultListModel<String> listModel;
+    private DefaultListModel<String> messageListModel;
     private JList<String> userList;
     private DefaultListModel<String> userListModel;
     private final JDialog dialog;
@@ -26,6 +31,8 @@ public class ChatGui implements ChatHandler {
     private MessageService messageService;
     private String selfNick;
     private String selfLogin;
+
+    private File historyFile;
 
     public ChatGui(MessageService messageService, String selfNick, String selfLogin) {
 
@@ -37,15 +44,50 @@ public class ChatGui implements ChatHandler {
             this.selfLogin = selfLogin;
         }
 
+        historyFile = new File("history/history_"+ selfLogin + ".txt");
+
         // prepare frame
         frame = new JFrame("Network Chat");
         frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
-        frame.setPreferredSize(new Dimension(300, 300));
+        frame.setPreferredSize(new Dimension(500, 400));
         Container pane = frame.getContentPane();
         pane.setLayout(new BorderLayout());
 
         // prepare menu panel
         JPanel northPanel = new JPanel();
+        prepareMenuPanel(northPanel);
+
+        // prepare nick change window
+        dialog = new JDialog(frame, "Change nick", true);
+        prepareNickChangeWindow(dialog);
+
+        //prepare text input elements
+        JPanel southPanel = new JPanel();
+        prepareTextInputElements(southPanel);
+
+        //prepare message list with scroll pane
+        try {
+            prepareMessageList();
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+
+        //prepare user list
+        JPanel westPanel = new JPanel();
+        prepareUserList(westPanel);
+
+        //add elements to the main panel
+        frame.add(northPanel, BorderLayout.NORTH);
+        frame.add(scrollPane, BorderLayout.CENTER);
+        frame.add(southPanel, BorderLayout.SOUTH);
+        frame.add(westPanel, BorderLayout.EAST);
+        frame.pack();
+
+        //create if not exists history file
+        createHistoryFile();
+    }
+
+    public void prepareMenuPanel(JPanel northPanel){
         northPanel.setLayout(new GridLayout());
         JButton changeNick = new JButton("Change nick");
         changeNick.addActionListener(new ActionListener() {
@@ -56,9 +98,9 @@ public class ChatGui implements ChatHandler {
         });
         northPanel.add(changeNick);
         northPanel.add(new JButton("Private message"));
+    }
 
-        // prepare nick change window
-        dialog = new JDialog(frame, "Change nick", true);
+    public void prepareNickChangeWindow(JDialog dialog){
         Container dialogPane = dialog.getContentPane();
         dialogPane.setLayout(new BoxLayout(dialogPane, BoxLayout.Y_AXIS));
         dialog.setDefaultCloseOperation(JFrame.HIDE_ON_CLOSE);
@@ -83,10 +125,9 @@ public class ChatGui implements ChatHandler {
         dialogPanel.add(confirmButton);
         dialogPane.add(dialogPanel);
         dialog.pack();
+    }
 
-
-        //prepare text input elements
-        JPanel southPanel = new JPanel();
+    public void prepareTextInputElements(JPanel southPanel){
         southPanel.setLayout(new GridBagLayout());
         GridBagConstraints gbc = new GridBagConstraints();
         gbc.fill = GridBagConstraints.HORIZONTAL;
@@ -101,9 +142,16 @@ public class ChatGui implements ChatHandler {
             @Override
             public void actionPerformed(ActionEvent e) {
                 if (!textField.getText().isEmpty()) {
-                    listModel.addElement("You: " + textField.getText());
+                    messageListModel.addElement("You: " + textField.getText());
+                    try(FileWriter fileWriter = new FileWriter(historyFile, true)){
+                        fileWriter.write("\n" + "You: " + textField.getText());
+                    } catch (IOException ex){
+                        ex.printStackTrace();
+                    }
                     scrollToBottom();
-                    messageService.sendPublicMessage(getSelfNick(), textField.getText());
+                    if (messageService != null) {
+                        messageService.sendPublicMessage(getSelfNick(), textField.getText());
+                    }
                     textField.setText("");
                 }
             }
@@ -113,40 +161,69 @@ public class ChatGui implements ChatHandler {
             @Override
             public void actionPerformed(ActionEvent e) {
                 if (!textField.getText().isEmpty()) {
-                    listModel.addElement("You: " + textField.getText());
+                    messageListModel.addElement("You: " + textField.getText());
+                    try(FileWriter fileWriter = new FileWriter(historyFile, true)){
+                        fileWriter.write("\n" + "You: " + textField.getText());
+                    } catch (IOException ex){
+                        ex.printStackTrace();
+                    }
                     scrollToBottom();
                     if (messageService != null) {
                         messageService.sendPublicMessage(getSelfNick(), textField.getText());
                     }
-
                     textField.setText("");
                 }
             }
         });
+    }
 
-        //prepare messages list with scroll bar
+    public void prepareMessageList() throws IOException {
         messageList = new JList<>();
-        listModel = new DefaultListModel<>();
-        messageList.setModel(listModel);
+        messageListModel = new DefaultListModel<>();
+        //messageListModel.ensureCapacity(100);
+        messageList.setModel(messageListModel);
+        List<String> lastMessages = new ArrayList<>();
+        String line;
+        if(historyFile.exists()){
+            ReversedLinesFileReader rlfr = new ReversedLinesFileReader(historyFile);
+            for (int i = 100; i > 0; i--){
+                line = rlfr.readLine();
+                if (line.equals(getSelfLogin())){
+                    break;
+                }
+                lastMessages.add(line);
+            }
+            for (int i = lastMessages.size()-1; i >= 0; i--){
+                messageListModel.addElement(lastMessages.get(i));
+            }
+        }
         scrollPane = new JScrollPane(messageList);
+        scrollToBottom();
+    }
 
-        //prepare users list
-        JPanel westPanel = new JPanel();
+    public void prepareUserList(JPanel westPanel){
         userList = new JList<>();
         //userList.setBackground(Color.BLUE);
         userListModel = new DefaultListModel<>();
         userListModel.addElement(selfNick);
         userList.setModel(userListModel);
         westPanel.add(userList);
-
-        //add elements to the main panel
-        frame.add(northPanel, BorderLayout.NORTH);
-        frame.add(scrollPane, BorderLayout.CENTER);
-        frame.add(southPanel, BorderLayout.SOUTH);
-        frame.add(westPanel, BorderLayout.EAST);
-        frame.pack();
     }
 
+    public void createHistoryFile(){
+        if(!historyFile.exists()){
+            try {
+                historyFile.createNewFile();
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
+            try(FileWriter fileWriter = new FileWriter(historyFile, true)){
+                fileWriter.write(getSelfLogin());
+            } catch (IOException ex){
+                ex.printStackTrace();
+            }
+        }
+    }
 
     public void showForm() {
         frame.setVisible(true);
@@ -166,7 +243,12 @@ public class ChatGui implements ChatHandler {
 
     @Override
     public void onNewMessage(String from, String message) {
-        listModel.addElement(from + ": " + message);
+        messageListModel.addElement(from + ": " + message);
+        try(FileWriter fileWriter = new FileWriter(historyFile, true)){
+            fileWriter.write("\n" + from + ": " + message);
+        } catch (IOException ex){
+            ex.printStackTrace();
+        }
         scrollToBottom();
     }
 
@@ -191,6 +273,10 @@ public class ChatGui implements ChatHandler {
 
     public void setSelfNick(String selfNick) {
         this.selfNick = selfNick;
+    }
+
+    public String getSelfLogin() {
+        return selfLogin;
     }
 
     public static void main(String[] args) {
